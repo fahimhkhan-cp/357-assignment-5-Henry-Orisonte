@@ -1,37 +1,66 @@
 #define _GNU_SOURCE
+#include "net.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+
+#define BUFFER_SIZE 1024
 
 void sigchld_handler(int s) {
     (void)s;
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
+
 void handle_request(int nfd)
 {
    FILE *network = fdopen(nfd, "r+");
    char *line = NULL;
    size_t size;
-   ssize_t num;
 
-   if (network == NULL)
-   {
-      perror("fdopen");
-      close(nfd);
-      return;
-   }
+   char method[16], path[256], version[16];
 
-   while ((num = getline(&line, &size, network)) >= 0)
+   getline(&line, &size, network);
+   sscanf(line, "%s %s %s", method, path, version);
+
+   while(getline(&line, &size, network) > 0)
    {
-      if(strcmp(line, "\r\n") == 0)
+      if (strcmp(line, "\r\n") == 0)
          break;
    }
 
    free(line);
+
+   char *filepath = path + 1;
+   struct stat st;
+   
+   if (stat(filepath, &st) == -1) {
+      fprintf(network, "HTTP/1.0 404 Not Found\r\n\r\n");
+      fclose(network);
+      return;
+   }
+
+   fprintf(network, "HTTP/1.0 200 OK\r\n");
+   fprintf(network, "Content-Type: text/html\r\n");
+   fprintf(network, "Content-Length: %lld\r\n", st.st_size);
+   fprintf(network, "\r\n");
+
+   if(strcmp(method, "GET") == 0)
+   {
+    FILE *file = fopen(filepath, "r");
+    char buffer[4096];
+    size_t bytesRead;
+
+    while((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        fwrite(buffer, 1, bytesRead, network);
+    }   
+    fclose(file);
+   }
+   fflush(network);
    fclose(network);
 }
 
