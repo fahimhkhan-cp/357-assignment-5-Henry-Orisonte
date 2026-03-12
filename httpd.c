@@ -28,6 +28,68 @@ void send_error(FILE *network, char *status, char *title) {
     fflush(network);
 }
 
+void handle_cgi(FILE *network, char *filepath) {
+    char *argv[64];
+    int argc = 0;
+
+    char *args_string = strchr(filepath, '?');
+    if (args_string != NULL) {
+        *args_string = '\0';
+        args_string++;
+        argv[argc++] = filepath;
+        char *token = strtok(args_string, "&");
+        while (token != NULL && argc < 63) {
+            argv[argc++] = token;
+            token = strtok(NULL, "&");
+        }
+    } else{
+        argv[argc++] = filepath;
+    }
+    argv[argc] = NULL;
+    char tmp_filepath[64];
+    snprintf(tmp_filepath, sizeof(tmp_filepath), "/tmp/cgi_%d.txt", getpid());
+    
+    pid_t pid = fork();
+    if (pid == -1) {
+        send_error(network, "500 Internal Server Error", "500 Internal Server Error");
+        fclose(network);
+        return;
+    } if (pid == 0) {
+        if (freopen(tmp_filepath, "w", stdout) == NULL) exit(1);
+        execv(argv[0], argv); 
+        exit(1);
+    }
+    waitpid(pid, NULL, 0);
+
+    struct stat st;
+    if (stat(tmp_filepath, &st) == -1) {
+        send_error(network, "500 Internal Server Error", "500 Internal Server Error");
+        unlink(tmp_filepath);
+        return;
+    } 
+    FILE *f = fopen(tmp_filepath, "rb");
+    if (f == NULL) {
+        send_error(network, "500 Internal Error", "500 Internal Error");
+        unlink(tmp_filepath);
+        return;
+    }
+
+    fprintf(network, "HTTP/1.0 200 OK\r\n");
+    fprintf(network, "Content-Type: text/html\r\n");
+    fprintf(network, "Content-Length: %ld\r\n\r\n", (long)st.st_size);
+
+    char buf[4096];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        fwrite(buf, 1, n, network);
+    }
+
+    fclose(f);
+    fflush(network);
+    unlink(tmp_filepath);
+
+}
+
 
 void handle_request(int nfd)
 {
@@ -49,6 +111,18 @@ void handle_request(int nfd)
    free(line);
 
    char *filepath = path + 1;
+
+   if(strstr(filepath, "..")!= NULL) {
+        send_error(network, "400 Bad Request", "400 Bad Request");
+        fclose(network);
+        return;
+   }
+
+   if (strncmp(filepath, "cgi-like/", 9) == 0) {
+        handle_cgi(network, filepath);
+        fclose(network);
+        return;
+    }
 
    if (strcmp(method, "GET") != 0 && strcmp(method, "HEAD") != 0) {
         send_error(network, "501 Not Implemented", "501 Not Implemented");
