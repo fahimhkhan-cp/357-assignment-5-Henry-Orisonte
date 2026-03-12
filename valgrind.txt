@@ -1,0 +1,29 @@
+valgrind --leak-check=full --track-fds=yes ./httpd 8080
+==102676== Memcheck, a memory error detector
+==102676== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==102676== Using Valgrind-3.15.0 and LibVEX; rerun with -h for copyright info
+==102676== Command: ./httpd 8080
+==102676== 
+Listening on port 8080...
+Connection established
+Forked child process with PID: 103110
+==103110== 
+==103110== FILE DESCRIPTORS: 3 open at exit.
+==103110== Open file descriptor 2: /dev/pts/3
+==103110==    <inherited from parent>
+==103110== 
+==103110== Open file descriptor 1: /dev/pts/3
+==103110==    <inherited from parent>
+==103110== 
+==103110== Open file descriptor 0: /dev/pts/3
+==103110==    <inherited from parent>
+==103110== 
+==103110== 
+==103110== HEAP SUMMARY:
+==103110==     in use at exit: 0 bytes in 0 blocks
+==103110==   total heap usage: 3 allocs, 3 frees, 1,256 bytes allocated
+==103110== 
+==103110== All heap blocks were freed -- no leaks are possible
+==103110== 
+==103110== For lists of detected and suppressed errors, rerun with: -s
+==103110== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
