@@ -15,6 +15,19 @@ void sigchld_handler(int s) {
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
+void send_error(FILE *network, char *status, char *title) {
+    char body[256];
+
+    snprintf(body, sizeof(body), "%s\r\n", title);
+    
+    fprintf(network, "HTTP/1.0 %s\r\n", status);
+    fprintf(network, "Content-Type: text/html\r\n");
+    fprintf(network, "Content-Length: %zu\r\n", strlen(body));
+    fprintf(network, "\r\n");
+    fprintf(network, "%s", body);
+    fflush(network);
+}
+
 
 void handle_request(int nfd)
 {
@@ -36,10 +49,16 @@ void handle_request(int nfd)
    free(line);
 
    char *filepath = path + 1;
+
+   if (strcmp(method, "GET") != 0 && strcmp(method, "HEAD") != 0) {
+        send_error(network, "501 Not Implemented", "501 Not Implemented");
+        fclose(network);
+        return;
+    }
    struct stat st;
    
    if (stat(filepath, &st) == -1) {
-      fprintf(network, "HTTP/1.0 404 Not Found\r\n\r\n");
+      send_error(network, "404 Not Found", "404 Not Found");
       fclose(network);
       return;
    }
