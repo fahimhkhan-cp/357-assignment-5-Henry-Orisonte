@@ -63,6 +63,12 @@ void handle_request(int nfd)
       return;
    }
 
+   if(access(filepath, R_OK) == -1) {
+      send_error(network, "403 Forbidden", "403 Forbidden");
+      fclose(network);
+      return;
+   }
+
    fprintf(network, "HTTP/1.0 200 OK\r\n");
    fprintf(network, "Content-Type: text/html\r\n");
    fprintf(network, "Content-Length: %lld\r\n", st.st_size);
@@ -71,6 +77,11 @@ void handle_request(int nfd)
    if(strcmp(method, "GET") == 0)
    {
     FILE *file = fopen(filepath, "r");
+    if(file == NULL) {
+        send_error(network, "500 Internal Server Error", "500 Internal Server Error");
+        fclose(network);
+        return;
+    }
     char buffer[4096];
     size_t bytesRead;
 
