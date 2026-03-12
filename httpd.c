@@ -145,7 +145,7 @@ void handle_request(int nfd)
 
    fprintf(network, "HTTP/1.0 200 OK\r\n");
    fprintf(network, "Content-Type: text/html\r\n");
-   fprintf(network, "Content-Length: %lld\r\n", st.st_size);
+   fprintf(network, "Content-Length: %ld\r\n", st.st_size);
    fprintf(network, "\r\n");
 
    if(strcmp(method, "GET") == 0)

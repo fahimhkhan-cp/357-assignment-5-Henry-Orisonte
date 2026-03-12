@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -pedantic
+CFLAGS = -Wall -std=c99 -pedantic -g
 SERVER = httpd
 SERVER_OBJS = httpd.o net.o
 
